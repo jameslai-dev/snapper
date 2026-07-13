@@ -689,7 +689,7 @@ namespace snapper
 		    {
 			cmd_args << SSH_BIN;
 			if (backup_config.ssh_port != 0)
-			    cmd_args << "-P" << to_string(backup_config.ssh_port);
+			    cmd_args << "-p" << to_string(backup_config.ssh_port);
 			if (!backup_config.ssh_identity.empty())
 			    cmd_args << "-i" << backup_config.ssh_identity;
 			cmd_args << (backup_config.ssh_user.empty()
