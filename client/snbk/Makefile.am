@@ -2,7 +2,7 @@
 # Makefile.am for snapper/client/snbk
 #
 
-AM_CPPFLAGS = -I$(top_srcdir) $(DBUS_CFLAGS) $(JSON_C_CFLAGS)
+AM_CPPFLAGS = -I$(top_srcdir) $(DBUS_CFLAGS) $(JSON_C_CFLAGS) $(XML2_CFLAGS)
 
 sbin_PROGRAMS = snbk
 
@@ -32,4 +32,5 @@ snbk_LDADD =				\
 	../../dbus/libdbus.la		\
 	../proxy/libproxy.la		\
 	../proxy/libclient.la		\
-        $(JSON_C_LIBS)
+        $(JSON_C_LIBS)			\
+        $(XML2_LIBS)

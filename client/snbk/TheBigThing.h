@@ -75,6 +75,10 @@ namespace snapper
 
 	unsigned int num;
 	time_t date = 0;	// as reported by snapper
+	SnapshotType type = SnapshotType::SINGLE; // The fallback default
+	unsigned int pre_num = 0;
+	string cleanup;
+	map<string, string> userdata;
 
 	SourceState source_state = SourceState::MISSING;
 	TargetState target_state = TargetState::MISSING;
@@ -189,6 +193,14 @@ namespace snapper
 
 	void probe_source(const BackupConfig& backup_config, bool verbose);
 	void probe_target(const BackupConfig& backup_config, bool verbose);
+
+	/**
+	 * Load snapshot metadata (info.xml) required for the cleanup algorithms.
+	 * This function should only be executed after `probe_source` and `probe_target`.
+	 * If the source snapshot is missing, the metadata will be loaded from the backup
+	 * snapshot.
+	 */
+	void load_metadata(const BackupConfig& backup_config);
 
     };
 

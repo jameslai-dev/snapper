@@ -25,9 +25,13 @@
 #include <iostream>
 #include <regex>
 
+#include <boost/algorithm/string.hpp>
+
+#include "snapper/FileUtils.h"
 #include "snapper/SystemCmd.h"
 #include "snapper/SnapperDefines.h"
 #include "snapper/SnapperTmpl.h"
+#include "snapper/XmlFile.h"
 
 #include "../proxy/proxy.h"
 #include "../utils/text.h"
@@ -471,6 +475,7 @@ namespace snapper
     {
 	probe_source(backup_config, verbose);
 	probe_target(backup_config, verbose);
+	load_metadata(backup_config);
 
 	sort(the_big_things.begin(), the_big_things.end());
 
@@ -644,6 +649,105 @@ namespace snapper
 
 		// target_state is plain and simply missing or the snapshot is not even in
 		// the list.
+	    }
+	}
+    }
+
+
+    void
+    TheBigThings::load_metadata(const BackupConfig& backup_config)
+    {
+	const ProxySnapshots& source_snapshots = snapper->getSnapshots();
+
+	for (TheBigThing& the_big_thing : the_big_things)
+	{
+	    if (the_big_thing.source_state != TheBigThing::SourceState::MISSING)
+	    {
+		// The backup device may be slower than the source device (e.g., via SSH).
+		// Load metadata from the source snapshot to reduce the overhead.
+		auto source_snapshot = source_snapshots.find(the_big_thing.num);
+
+		the_big_thing.type = source_snapshot->getType();
+		the_big_thing.pre_num = source_snapshot->getPreNum();
+		the_big_thing.cleanup = source_snapshot->getCleanup();
+		the_big_thing.userdata = source_snapshot->getUserdata();
+	    }
+	    else
+	    {
+		// Since the remote SSH target device filesystem is not directly
+		// accessible, the snapshot metadata is first dumped to a string using
+		// cat, and then loaded via XmlFile.
+		SystemCmd::Args cmd_args = {};
+		switch (backup_config.target_mode)
+		{
+		    case BackupConfig::TargetMode::LOCAL:
+		    {
+			cmd_args << CAT_BIN;
+		    }
+		    break;
+
+		    case BackupConfig::TargetMode::SSH_PUSH:
+		    {
+			cmd_args << SSH_BIN;
+			if (backup_config.ssh_port != 0)
+			    cmd_args << "-P" << to_string(backup_config.ssh_port);
+			if (!backup_config.ssh_identity.empty())
+			    cmd_args << "-i" << backup_config.ssh_identity;
+			cmd_args << (backup_config.ssh_user.empty()
+			                 ? ""
+			                 : backup_config.ssh_user + "@") +
+			                backup_config.ssh_host
+			         << backup_config.target_cat_bin;
+		    }
+		    break;
+		};
+
+		cmd_args << target_snapshot_dir(backup_config, the_big_thing.num) +
+		                "/info.xml";
+
+		SystemCmd cmd(cmd_args);
+		if (cmd.retcode() != 0)
+		{
+		    y2err("command '" << cmd.cmd() << "' failed: " << cmd.retcode());
+		    for (const string& tmp : cmd.get_stdout())
+			y2err(tmp);
+		    for (const string& tmp : cmd.get_stderr())
+			y2err(tmp);
+
+		    // The `info.xml` file might be missing.
+		    // Using fallback values for snapshot metadata.
+		    continue;
+		}
+
+		// Load the snapshot metadata.
+		XmlFile file(XmlFile::FromString, boost::join(cmd.get_stdout(), ""));
+		const xmlNode* node = file.getRootElement();
+		string tmp;
+
+		SnapshotType tmp_type;
+		if (!getChildValue(node, "type", tmp) || !toValue(tmp, tmp_type, true))
+		{
+		    y2err("The type attribute is missing from snapshot "
+		          << the_big_thing.num);
+		}
+		else
+		{
+		    the_big_thing.type = tmp_type;
+		}
+
+		getChildValue(node, "pre_num", the_big_thing.pre_num);
+		getChildValue(node, "cleanup", the_big_thing.cleanup);
+
+		const vector<const xmlNode*> l = getChildNodes(node, "userdata");
+		for (vector<const xmlNode*>::const_iterator it2 = l.begin();
+		     it2 != l.end(); ++it2)
+		{
+		    string key, value;
+		    getChildValue(*it2, "key", key);
+		    getChildValue(*it2, "value", value);
+		    if (!key.empty())
+			the_big_thing.userdata[key] = value;
+		}
 	    }
 	}
     }
