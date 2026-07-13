@@ -27,7 +27,6 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "snapper/FileUtils.h"
 #include "snapper/SystemCmd.h"
 #include "snapper/SnapperDefines.h"
 #include "snapper/SnapperTmpl.h"
