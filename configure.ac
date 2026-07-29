@@ -27,6 +27,7 @@ AC_PREFIX_DEFAULT(/usr)
 AC_PATH_PROG([XSLTPROC], [xsltproc], [/usr/bin/xsltproc])
 
 AC_PATH_PROG([BTRFS_BIN], [btrfs], [/usr/sbin/btrfs])
+AC_PATH_PROG([CAT_BIN], [cat], [/usr/bin/cat])
 AC_PATH_PROG([CHATTR_BIN], [chattr], [/usr/bin/chattr])
 AC_PATH_PROG([CHSNAP_BIN], [chsnap], [/sbin/chsnap])
 AC_PATH_PROG([CP_BIN], [cp], [/bin/cp])
@@ -45,6 +46,7 @@ AC_PATH_PROG([SHA256SUM_BIN], [sha256sum], [/usr/bin/sha256sum])
 AC_PATH_PROG([TOUCH_BIN], [touch], [/usr/bin/touch])
 
 AC_DEFINE_UNQUOTED([BTRFS_BIN], ["$BTRFS_BIN"], [Path of btrfs program.])
+AC_DEFINE_UNQUOTED([CAT_BIN], ["$CAT_BIN"], [Path of cat program.])
 AC_DEFINE_UNQUOTED([CHATTR_BIN], ["$CHATTR_BIN"], [Path of chattr program.])
 AC_DEFINE_UNQUOTED([CHSNAP_BIN], ["$CHSNAP_BIN"], [Path of chsnap program.])
 AC_DEFINE_UNQUOTED([CP_BIN], ["$CP_BIN"], [Path of cp program.])
@@ -195,6 +197,7 @@ fi
 PKG_CHECK_MODULES(DBUS, dbus-1)
 PKG_CHECK_MODULES(XML2, libxml-2.0)
 PKG_CHECK_MODULES(JSON_C, json-c, [], [AC_MSG_WARN([Cannot find json-c. Please install libjson-c-devel])])
+PKG_CHECK_MODULES([CRYPTO], [libcrypto])
 PKG_CHECK_MODULES(ZLIB, zlib)
 
 # Conditional support for libbtrfsutil based on existence of pkg-config file

@@ -1,0 +1,134 @@
+/*
+ * Copyright (c) 2026 SUSE LLC
+ *
+ * All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as published
+ * by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, contact Novell, Inc.
+ *
+ * To contact Novell about this file by physical or electronic mail, you may
+ * find current contact information at www.novell.com.
+ */
+
+
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+
+#include <boost/algorithm/string.hpp>
+#include <openssl/sha.h>
+
+#include <snapper/Enum.h>
+#include <snapper/LoggerImpl.h>
+#include <snapper/SystemCmd.h>
+#include <snapper/XmlFile.h>
+
+#include "CmdMetaParse.h"
+
+#include "../misc.h"
+
+
+namespace snapper
+{
+    CmdMetaParse::CmdMetaParse(const Shell& shell, const string& snapshot_dir,
+                               const string& cat_bin)
+        : path(snapshot_dir + "/info.xml")
+    {
+	SystemCmd::Args cmd_args = { cat_bin, path };
+	SystemCmd cmd(shellify(shell, cmd_args));
+
+	if (cmd.retcode() != 0)
+	{
+	    y2err("command '" << cmd.cmd() << "' failed: " << cmd.retcode());
+	    for (const string& tmp : cmd.get_stdout())
+		y2err(tmp);
+	    for (const string& tmp : cmd.get_stderr())
+		y2err(tmp);
+	}
+
+	content = boost::join(cmd.get_stdout(), "");
+
+	y2mil(*this);
+    }
+
+
+    string CmdMetaParse::get_checksum() const
+    {
+	if (!content.length())
+	    return "";
+
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	SHA256(reinterpret_cast<const unsigned char*>(content.c_str()), content.length(),
+	       hash);
+
+	std::stringstream ss;
+	for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+	{
+	    ss << std::hex << std::setw(2) << std::setfill('0')
+	       << static_cast<int>(hash[i]);
+	}
+
+	return ss.str();
+    }
+
+
+    SnapshotMeta CmdMetaParse::get_meta() const
+    {
+	SnapshotMeta meta;
+
+	if (!content.length())
+	{
+	    // The `info.xml` file might be missing.
+	    // Using fallback values for snapshot metadata.
+	    return meta;
+	}
+
+	XmlFile file(XmlFile::FromString, content);
+	const xmlNode* node = file.getRootElement();
+	string tmp;
+
+	if (!getChildValue(node, "type", tmp) || !toValue(tmp, meta.type, true))
+	{
+	    // Log error for the missing attribute and retain the default value.
+	    y2err("The type attribute is missing from " << path);
+	}
+
+	getChildValue(node, "pre_num", meta.pre_num);
+	getChildValue(node, "cleanup", meta.cleanup);
+
+	for (const xmlNode* tmp : getChildNodes(node, "userdata"))
+	{
+	    string key, value;
+	    getChildValue(tmp, "key", key);
+	    getChildValue(tmp, "value", value);
+	    if (!key.empty())
+		meta.userdata[key] = value;
+	}
+
+	return meta;
+    }
+
+
+    std::ostream& operator<<(std::ostream& s, const CmdMetaParse& cmd_metaparse)
+    {
+	SnapshotMeta meta = cmd_metaparse.get_meta();
+	s << "path: " << cmd_metaparse.path
+	  << ", checksum: " << cmd_metaparse.get_checksum()
+	  << ", type: " << toString(meta.type) << ", pre_num: " << meta.pre_num
+	  << ", cleanup: " << meta.cleanup
+	  << ", userdata: " << show_userdata(meta.userdata) << '\n';
+
+	return s;
+    }
+
+
+} // namespace snapper
