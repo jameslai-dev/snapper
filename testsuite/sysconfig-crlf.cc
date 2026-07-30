@@ -11,6 +11,15 @@ using namespace snapper;
 
 BOOST_AUTO_TEST_CASE(sysconfig_crlf)
 {
+    string buffer = "KEY=\"value\"\r\n";
+
+    // the file is generated since there were problems with the cr disappearing (by git?)
+
+    FILE* fout = fopen("sysconfig-crlf.txt", "w");
+    BOOST_REQUIRE(fout);
+    fwrite(buffer.c_str(), 1, buffer.size(), fout);
+    fclose(fout);
+
     SysconfigFile s("sysconfig-crlf.txt");
 
     string value;
