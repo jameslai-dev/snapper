@@ -43,7 +43,7 @@ namespace snapper
                                const string& cat_bin)
         : path(snapshot_dir + "/info.xml")
     {
-	SystemCmd::Args cmd_args = { cat_bin, path };
+	SystemCmd::Args cmd_args = { cat_bin, "--", path };
 	SystemCmd cmd(shellify(shell, cmd_args));
 
 	if (cmd.retcode() != 0)
