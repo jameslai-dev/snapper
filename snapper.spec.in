@@ -106,11 +106,7 @@ BuildRequires:  zlib-devel
 %if %{with coverage}
 BuildRequires:  lcov
 %endif
-%if 0%{?suse_version}
-BuildRequires:  libopenssl-devel
-%else
-BuildRequires:  openssl-devel
-%endif
+BuildRequires:  pkgconfig(libcrypto)
 Requires:       dbus-service
 Requires:       diffutils
 Requires:       libsnapper@LIBVERSION_MAJOR@ = %version
