@@ -27,6 +27,7 @@
 #include <boost/algorithm/string.hpp>
 #include <openssl/sha.h>
 
+#include <snapper/AppUtil.h>
 #include <snapper/Enum.h>
 #include <snapper/LoggerImpl.h>
 #include <snapper/SystemCmd.h>
@@ -99,6 +100,18 @@ namespace snapper
 	XmlFile file(XmlFile::FromString, content);
 	const xmlNode* node = file.getRootElement();
 	string tmp;
+
+	time_t tmp_date;
+	if (!getChildValue(node, "date", tmp) ||
+	    (tmp_date = scan_datetime(tmp, true)) == (time_t)(-1))
+	{
+	    y2err("The date attribute is missing or invalid from " << path);
+	    SN_THROW(Exception(_("Failed to parse the date attribute from `info.xml`")));
+	}
+	else
+	{
+	    meta.date = tmp_date;
+	}
 
 	if (!getChildValue(node, "type", tmp) || !toValue(tmp, meta.type, true))
 	{

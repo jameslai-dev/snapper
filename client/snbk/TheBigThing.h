@@ -75,7 +75,6 @@ namespace snapper
 	void remove(const BackupConfig& backup_config, bool quiet);
 
 	unsigned int num;
-	time_t date = 0;	// as reported by snapper
 
 	SourceState source_state = SourceState::MISSING;
 	TargetState target_state = TargetState::MISSING;

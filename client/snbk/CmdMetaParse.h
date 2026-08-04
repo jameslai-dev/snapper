@@ -55,6 +55,8 @@ namespace snapper
 	};
 
 	State state = State::INVALID;
+
+	time_t date = 0;
 	SnapshotType type = SnapshotType::SINGLE;
 	unsigned int pre_num = 0;
 	string cleanup;

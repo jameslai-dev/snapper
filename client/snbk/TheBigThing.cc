@@ -507,7 +507,7 @@ namespace snapper
 	                                    "/" SNAPSHOT_NAME);
 
 	    TheBigThing the_big_thing(num);
-	    the_big_thing.date = source_snapshot.getDate();
+	    the_big_thing.meta.date = source_snapshot.getDate();
 	    the_big_thing.source_state = extra.is_read_only() ? TheBigThing::SourceState::READ_ONLY :
 		TheBigThing::SourceState::READ_WRITE;
 	    the_big_thing.source_uuid = extra.get_uuid();
