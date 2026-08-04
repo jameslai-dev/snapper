@@ -34,8 +34,27 @@ namespace snapper
     using std::string;
 
 
-    struct SnapshotMeta
+    class SnapshotMeta
     {
+    public:
+
+	enum class State
+	{
+	    /**
+	     * Errors occurred while processing the content of `info.xml`. Either the file
+	     * does not exist or some attributes are missing. The state of `SnapshotMeta`
+	     * is invalid.
+	     */
+	    INVALID,
+
+	    /**
+	     * The content of `info.xml` has been successfully processed. The state of
+	     * `SnapshotMeta` is valid.
+	     */
+	    VALID
+	};
+
+	State state = State::INVALID;
 	SnapshotType type = SnapshotType::SINGLE;
 	unsigned int pre_num = 0;
 	string cleanup;

@@ -53,6 +53,8 @@ namespace snapper
 		y2err(tmp);
 	    for (const string& tmp : cmd.get_stderr())
 		y2err(tmp);
+
+	    SN_THROW(Exception(_("Failed to load info.xml.")));
 	}
 
 	content = boost::join(cmd.get_stdout(), "");
@@ -64,7 +66,10 @@ namespace snapper
     string CmdMetaParse::get_checksum() const
     {
 	if (!content.length())
-	    return "";
+	{
+	    y2err(sformat("The content of %s is empty.", path.c_str()));
+	    SN_THROW(Exception(_("The content of info.xml is empty.")));
+	}
 
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 	SHA256(reinterpret_cast<const unsigned char*>(content.c_str()), content.length(),
@@ -83,14 +88,13 @@ namespace snapper
 
     SnapshotMeta CmdMetaParse::get_meta() const
     {
-	SnapshotMeta meta;
-
 	if (!content.length())
 	{
-	    // The `info.xml` file might be missing.
-	    // Using fallback values for snapshot metadata.
-	    return meta;
+	    y2err(sformat("The content of %s is empty.", path.c_str()));
+	    SN_THROW(Exception(_("The content of info.xml is empty.")));
 	}
+
+	SnapshotMeta meta;
 
 	XmlFile file(XmlFile::FromString, content);
 	const xmlNode* node = file.getRootElement();
@@ -98,21 +102,23 @@ namespace snapper
 
 	if (!getChildValue(node, "type", tmp) || !toValue(tmp, meta.type, true))
 	{
-	    // Log error for the missing attribute and retain the default value.
 	    y2err("The type attribute is missing from " << path);
+	    SN_THROW(Exception(_("The type attribute is missing from `info.xml`.")));
 	}
 
 	getChildValue(node, "pre_num", meta.pre_num);
 	getChildValue(node, "cleanup", meta.cleanup);
 
-	for (const xmlNode* tmp : getChildNodes(node, "userdata"))
+	for (const xmlNode* tmp_node : getChildNodes(node, "userdata"))
 	{
 	    string key, value;
-	    getChildValue(tmp, "key", key);
-	    getChildValue(tmp, "value", value);
+	    getChildValue(tmp_node, "key", key);
+	    getChildValue(tmp_node, "value", value);
 	    if (!key.empty())
 		meta.userdata[key] = value;
 	}
+
+	meta.state = SnapshotMeta::State::VALID;
 
 	return meta;
     }
