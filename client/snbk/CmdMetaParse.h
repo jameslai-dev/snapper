@@ -24,6 +24,7 @@
 #define SNAPPER_CMD_METAPARSE_H
 
 
+#include <snapper/Enum.h>
 #include <snapper/Snapshot.h>
 
 #include "Shell.h"
@@ -61,6 +62,12 @@ namespace snapper
 	unsigned int pre_num = 0;
 	string cleanup;
 	map<string, string> userdata;
+    };
+
+
+    template <> struct EnumInfo<SnapshotMeta::State>
+    {
+	static const vector<string> names;
     };
 
 

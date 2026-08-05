@@ -40,6 +40,9 @@
 
 namespace snapper
 {
+    const vector<string> EnumInfo<SnapshotMeta::State>::names({ "invalid", "valid" });
+
+
     CmdMetaParse::CmdMetaParse(const Shell& shell, const string& snapshot_dir,
                                const string& cat_bin)
         : path(snapshot_dir + "/info.xml")
@@ -142,6 +145,7 @@ namespace snapper
 	SnapshotMeta meta = cmd_metaparse.get_meta();
 	s << "path: " << cmd_metaparse.path
 	  << ", checksum: " << cmd_metaparse.get_checksum()
+	  << ", state: " << toString(meta.state) << ", date: " << meta.date
 	  << ", type: " << toString(meta.type) << ", pre_num: " << meta.pre_num
 	  << ", cleanup: " << meta.cleanup
 	  << ", userdata: " << show_userdata(meta.userdata) << '\n';
