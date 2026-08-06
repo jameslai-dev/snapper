@@ -106,6 +106,7 @@ BuildRequires:  zlib-devel
 %if %{with coverage}
 BuildRequires:  lcov
 %endif
+BuildRequires:  pkgconfig(libcrypto)
 Requires:       dbus-service
 Requires:       diffutils
 Requires:       libsnapper@LIBVERSION_MAJOR@ = %version
