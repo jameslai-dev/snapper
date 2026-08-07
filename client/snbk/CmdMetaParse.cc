@@ -61,7 +61,8 @@ namespace snapper
 	    SN_THROW(Exception(_("Failed to load info.xml.")));
 	}
 
-	content = boost::join(cmd.get_stdout(), "\n");
+	if (!cmd.get_stdout().empty())
+	    content = boost::join(cmd.get_stdout(), "\n") + "\n";
 
 	y2mil(*this);
     }
