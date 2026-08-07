@@ -20,10 +20,6 @@
  */
 
 
-#include <iomanip>
-#include <iostream>
-#include <sstream>
-
 #include <boost/algorithm/string.hpp>
 #include <openssl/sha.h>
 
@@ -61,7 +57,8 @@ namespace snapper
 	    SN_THROW(Exception(_("Failed to load info.xml.")));
 	}
 
-	content = boost::join(cmd.get_stdout(), "\n");
+	if (!cmd.get_stdout().empty())
+	    content = boost::join(cmd.get_stdout(), "\n") + "\n";
 
 	y2mil(*this);
     }
@@ -76,17 +73,14 @@ namespace snapper
 	}
 
 	unsigned char hash[SHA256_DIGEST_LENGTH];
-	SHA256(reinterpret_cast<const unsigned char*>(content.c_str()), content.length(),
-	       hash);
+	SHA256(reinterpret_cast<const unsigned char*>(content.c_str()), content.length(), hash);
 
-	std::stringstream ss;
-	for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
-	{
-	    ss << std::hex << std::setw(2) << std::setfill('0')
-	       << static_cast<int>(hash[i]);
-	}
+	char buf[2 * SHA256_DIGEST_LENGTH + 1];
 
-	return ss.str();
+	for (int i = 0; i < SHA256_DIGEST_LENGTH; ++i)
+	    snprintf(&buf[2 * i], 3, "%02x", hash[i]);
+
+	return buf;
     }
 
 
@@ -143,6 +137,7 @@ namespace snapper
     std::ostream& operator<<(std::ostream& s, const CmdMetaParse& cmd_metaparse)
     {
 	SnapshotMeta meta = cmd_metaparse.get_meta();
+
 	s << "path: " << cmd_metaparse.path
 	  << ", checksum: " << cmd_metaparse.get_checksum()
 	  << ", state: " << toString(meta.state) << ", date: " << meta.date

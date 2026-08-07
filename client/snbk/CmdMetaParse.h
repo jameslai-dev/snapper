@@ -87,7 +87,9 @@ namespace snapper
     private:
 
 	const string path;
-	string content = "";
+
+	string content;
+
     };
 
 } // namespace snapper
