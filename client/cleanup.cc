@@ -45,7 +45,7 @@ using namespace std;
 
 struct Parameters
 {
-    Parameters(const ProxySnapper* snapper);
+    Parameters(const ProxyConfig& config);
     virtual ~Parameters() {}
 
     virtual bool is_degenerated() const { return true; }
@@ -55,7 +55,7 @@ struct Parameters
     MinFreeLimit free_limit = 0.2;
 
 
-    void read(const ProxyConfig& config, const char* name, time_t& value)
+    void read(const char* name, time_t& value)
     {
 	const map<string, string>& raw = config.getAllValues();
 	map<string, string>::const_iterator pos = raw.find(name);
@@ -65,7 +65,7 @@ struct Parameters
 
 
     template<typename Type>
-    void read(const ProxyConfig& config, const char* name, Type& value)
+    void read(const char* name, Type& value)
     {
 	const map<string, string>& raw = config.getAllValues();
 	map<string, string>::const_iterator pos = raw.find(name);
@@ -83,6 +83,10 @@ struct Parameters
 	    }
 	}
     }
+
+    protected:
+
+	const ProxyConfig& config;
 };
 
 
@@ -95,12 +99,10 @@ operator<<(ostream& s, const Parameters& parameters)
 }
 
 
-Parameters::Parameters(const ProxySnapper* snapper)
+Parameters::Parameters(const ProxyConfig& config) : config(config)
 {
-    ProxyConfig config = snapper->getConfig();
-
-    read(config, "SPACE_LIMIT", space_limit);
-    read(config, "FREE_LIMIT", free_limit);
+    read("SPACE_LIMIT", space_limit);
+    read("FREE_LIMIT", free_limit);
 }
 
 
@@ -462,7 +464,7 @@ Cleaner::cleanup(std::function<bool()> condition, Plugins::Report& report)
 
 struct NumberParameters : public Parameters
 {
-    NumberParameters(const ProxySnapper* snapper);
+    NumberParameters(const ProxyConfig& config);
 
     bool is_degenerated() const override;
 
@@ -480,15 +482,13 @@ operator<<(ostream& s, const NumberParameters& parameters)
 }
 
 
-NumberParameters::NumberParameters(const ProxySnapper* snapper)
-    : Parameters(snapper), limit(50), limit_important(10)
+NumberParameters::NumberParameters(const ProxyConfig& config)
+    : Parameters(config), limit(50), limit_important(10)
 {
-    ProxyConfig config = snapper->getConfig();
+    read("NUMBER_MIN_AGE", min_age);
 
-    read(config, "NUMBER_MIN_AGE", min_age);
-
-    read(config, "NUMBER_LIMIT", limit);
-    read(config, "NUMBER_LIMIT_IMPORTANT", limit_important);
+    read("NUMBER_LIMIT", limit);
+    read("NUMBER_LIMIT_IMPORTANT", limit_important);
 
 #ifdef VERBOSE_LOGGING
     cout << *this << '\n';
@@ -569,7 +569,7 @@ private:
 void
 do_cleanup_number(ProxySnapper* snapper, bool verbose, Plugins::Report& report)
 {
-    NumberParameters parameters(snapper);
+    NumberParameters parameters(snapper->getConfig());
     NumberCleaner cleaner(snapper, verbose, parameters);
     cleaner.cleanup(report);
 }
@@ -578,7 +578,7 @@ do_cleanup_number(ProxySnapper* snapper, bool verbose, Plugins::Report& report)
 void
 do_cleanup_number(ProxySnapper* snapper, bool verbose, std::function<bool()> condition, Plugins::Report& report)
 {
-    NumberParameters parameters(snapper);
+    NumberParameters parameters(snapper->getConfig());
     NumberCleaner cleaner(snapper, verbose, parameters);
     cleaner.cleanup(condition, report);
 }
@@ -586,7 +586,7 @@ do_cleanup_number(ProxySnapper* snapper, bool verbose, std::function<bool()> con
 
 struct TimelineParameters : public Parameters
 {
-    TimelineParameters(const ProxySnapper* snapper);
+    TimelineParameters(const ProxyConfig& config);
 
     bool is_degenerated() const override;
 
@@ -612,20 +612,18 @@ operator<<(ostream& s, const TimelineParameters& parameters)
 }
 
 
-TimelineParameters::TimelineParameters(const ProxySnapper* snapper)
-    : Parameters(snapper), limit_hourly(10), limit_daily(10), limit_monthly(10),
+TimelineParameters::TimelineParameters(const ProxyConfig& config)
+    : Parameters(config), limit_hourly(10), limit_daily(10), limit_monthly(10),
       limit_weekly(0), limit_quarterly(0), limit_yearly(10)
 {
-    ProxyConfig config = snapper->getConfig();
+    read("TIMELINE_MIN_AGE", min_age);
 
-    read(config, "TIMELINE_MIN_AGE", min_age);
-
-    read(config, "TIMELINE_LIMIT_HOURLY", limit_hourly);
-    read(config, "TIMELINE_LIMIT_DAILY", limit_daily);
-    read(config, "TIMELINE_LIMIT_WEEKLY", limit_weekly);
-    read(config, "TIMELINE_LIMIT_MONTHLY", limit_monthly);
-    read(config, "TIMELINE_LIMIT_QUARTERLY", limit_quarterly);
-    read(config, "TIMELINE_LIMIT_YEARLY", limit_yearly);
+    read("TIMELINE_LIMIT_HOURLY", limit_hourly);
+    read("TIMELINE_LIMIT_DAILY", limit_daily);
+    read("TIMELINE_LIMIT_WEEKLY", limit_weekly);
+    read("TIMELINE_LIMIT_MONTHLY", limit_monthly);
+    read("TIMELINE_LIMIT_QUARTERLY", limit_quarterly);
+    read("TIMELINE_LIMIT_YEARLY", limit_yearly);
 
 #ifdef VERBOSE_LOGGING
     cout << *this << '\n';
@@ -802,7 +800,7 @@ private:
 void
 do_cleanup_timeline(ProxySnapper* snapper, bool verbose, Plugins::Report& report)
 {
-    TimelineParameters parameters(snapper);
+    TimelineParameters parameters(snapper->getConfig());
     TimelineCleaner cleaner(snapper, verbose, parameters);
     cleaner.cleanup(report);
 }
@@ -811,7 +809,7 @@ do_cleanup_timeline(ProxySnapper* snapper, bool verbose, Plugins::Report& report
 void
 do_cleanup_timeline(ProxySnapper* snapper, bool verbose, std::function<bool()> condition, Plugins::Report& report)
 {
-    TimelineParameters parameters(snapper);
+    TimelineParameters parameters(snapper->getConfig());
     TimelineCleaner cleaner(snapper, verbose, parameters);
     cleaner.cleanup(condition, report);
 }
@@ -819,16 +817,14 @@ do_cleanup_timeline(ProxySnapper* snapper, bool verbose, std::function<bool()> c
 
 struct EmptyPrePostParameters : public Parameters
 {
-    EmptyPrePostParameters(const ProxySnapper* snapper);
+    EmptyPrePostParameters(const ProxyConfig& config);
 };
 
 
-EmptyPrePostParameters::EmptyPrePostParameters(const ProxySnapper* snapper)
-    : Parameters(snapper)
+EmptyPrePostParameters::EmptyPrePostParameters(const ProxyConfig& config)
+    : Parameters(config)
 {
-    ProxyConfig config = snapper->getConfig();
-
-    read(config, "EMPTY_PRE_POST_MIN_AGE", min_age);
+    read("EMPTY_PRE_POST_MIN_AGE", min_age);
 
 #ifdef VERBOSE_LOGGING
     cout << *this << '\n';
@@ -876,7 +872,7 @@ private:
 void
 do_cleanup_empty_pre_post(ProxySnapper* snapper, bool verbose, Plugins::Report& report)
 {
-    EmptyPrePostParameters parameters(snapper);
+    EmptyPrePostParameters parameters(snapper->getConfig());
     EmptyPrePostCleaner cleaner(snapper, verbose, parameters);
     cleaner.cleanup(report);
 }
@@ -886,7 +882,7 @@ void
 do_cleanup_empty_pre_post(ProxySnapper* snapper, bool verbose, std::function<bool()> condition,
 			  Plugins::Report& report)
 {
-    EmptyPrePostParameters parameters(snapper);
+    EmptyPrePostParameters parameters(snapper->getConfig());
     EmptyPrePostCleaner cleaner(snapper, verbose, parameters);
     cleaner.cleanup(condition, report);
 }
