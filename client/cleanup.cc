@@ -1,6 +1,6 @@
 /*
  * Copyright (c) [2011-2014] Novell, Inc.
- * Copyright (c) [2016-2024] SUSE LLC
+ * Copyright (c) [2016-2026] SUSE LLC
  *
  * All Rights Reserved.
  *
@@ -33,7 +33,6 @@
 #include "utils/Limit.h"
 #include "utils/equal-date.h"
 #include "utils/HumanString.h"
-#include "proxy/locker.h"
 #include "cleanup.h"
 
 
@@ -110,8 +109,8 @@ class Cleaner
 {
 public:
 
-    Cleaner(ProxySnapper* snapper, bool verbose, const Parameters& parameters)
-	: snapper(snapper), locker(snapper), verbose(verbose), parameters(parameters) {}
+    Cleaner(ProxyCleanable& cleanable, bool verbose, const Parameters& parameters)
+	: cleanable(cleanable), verbose(verbose), parameters(parameters) {}
 
     virtual ~Cleaner() {}
 
@@ -161,9 +160,7 @@ protected:
     void cleanup(ProxySnapshots& snapshots, Plugins::Report& report);
     void cleanup(ProxySnapshots& snapshots, std::function<bool()> condition, Plugins::Report& report);
 
-    ProxySnapper* snapper;
-
-    Locker locker;
+    ProxyCleanable& cleanable;
 
     const bool verbose;
     const Parameters& parameters;
@@ -251,7 +248,7 @@ Cleaner::remove(const list<ProxySnapshots::iterator>& tmp, Plugins::Report& repo
 {
     for (list<ProxySnapshots::iterator>::const_iterator it = tmp.begin(); it != tmp.end(); ++it)
     {
-	snapper->deleteSnapshots({ *it }, verbose, report);
+	cleanable.delete_snapshots({ *it }, verbose, report);
     }
 }
 
@@ -264,7 +261,7 @@ Cleaner::is_quota_aware() const
 
     try
     {
-	snapper->prepareQuota();
+	cleanable.prepare_quota();
     }
     catch (const QuotaException& e)
     {
@@ -281,7 +278,7 @@ Cleaner::is_quota_aware() const
 bool
 Cleaner::is_quota_satisfied() const
 {
-    QuotaData quota_data = snapper->queryQuotaData();
+    QuotaData quota_data = cleanable.query_quota_data();
 
     if (quota_data.size == 0)
 	return true;
@@ -306,7 +303,7 @@ Cleaner::is_free_aware() const
 
     try
     {
-	snapper->queryFreeSpaceData();
+	cleanable.query_free_space_data();
     }
     catch (const FreeSpaceException& e)
     {
@@ -323,7 +320,7 @@ Cleaner::is_free_aware() const
 bool
 Cleaner::is_free_satisfied() const
 {
-    FreeSpaceData free_space_data = snapper->queryFreeSpaceData();
+    FreeSpaceData free_space_data = cleanable.query_free_space_data();
 
     if (free_space_data.size == 0)
 	return true;
@@ -409,7 +406,7 @@ Cleaner::cleanup(ProxySnapshots& snapshots, std::function<bool()> condition, Plu
 void
 Cleaner::cleanup(Plugins::Report& report)
 {
-    ProxySnapshots& snapshots = snapper->getSnapshots();
+    ProxySnapshots& snapshots = cleanable.get_snapshots();
 
 #ifdef VERBOSE_LOGGING
     cout << "cleanup without condition" << '\n';
@@ -452,7 +449,7 @@ Cleaner::cleanup(Plugins::Report& report)
 void
 Cleaner::cleanup(std::function<bool()> condition, Plugins::Report& report)
 {
-    ProxySnapshots& snapshots = snapper->getSnapshots();
+    ProxySnapshots& snapshots = cleanable.get_snapshots();
 
 #ifdef VERBOSE_LOGGING
     cout << "cleanup with user condition" << '\n';
@@ -508,8 +505,8 @@ class NumberCleaner : public Cleaner
 
 public:
 
-    NumberCleaner(ProxySnapper* snapper, bool verbose, const NumberParameters& parameters)
-	: Cleaner(snapper, verbose, parameters) {}
+    NumberCleaner(ProxyCleanable& cleanable, bool verbose, const NumberParameters& parameters)
+	: Cleaner(cleanable, verbose, parameters) {}
 
 private:
 
@@ -567,19 +564,19 @@ private:
 
 
 void
-do_cleanup_number(ProxySnapper* snapper, bool verbose, Plugins::Report& report)
+CleanupOperation::do_cleanup_number(bool verbose, Plugins::Report& report)
 {
-    NumberParameters parameters(snapper->getConfig());
-    NumberCleaner cleaner(snapper, verbose, parameters);
+    NumberParameters parameters(get_config());
+    NumberCleaner cleaner(get_cleanable(), verbose, parameters);
     cleaner.cleanup(report);
 }
 
 
 void
-do_cleanup_number(ProxySnapper* snapper, bool verbose, std::function<bool()> condition, Plugins::Report& report)
+CleanupOperation::do_cleanup_number(bool verbose, std::function<bool()> condition, Plugins::Report& report)
 {
-    NumberParameters parameters(snapper->getConfig());
-    NumberCleaner cleaner(snapper, verbose, parameters);
+    NumberParameters parameters(get_config());
+    NumberCleaner cleaner(get_cleanable(), verbose, parameters);
     cleaner.cleanup(condition, report);
 }
 
@@ -644,8 +641,8 @@ class TimelineCleaner : public Cleaner
 {
 public:
 
-    TimelineCleaner(ProxySnapper* snapper, bool verbose, const TimelineParameters& parameters)
-	: Cleaner(snapper, verbose, parameters) {}
+    TimelineCleaner(ProxyCleanable& cleanable, bool verbose, const TimelineParameters& parameters)
+	: Cleaner(cleanable, verbose, parameters) {}
 
 private:
 
@@ -798,19 +795,19 @@ private:
 
 
 void
-do_cleanup_timeline(ProxySnapper* snapper, bool verbose, Plugins::Report& report)
+CleanupOperation::do_cleanup_timeline(bool verbose, Plugins::Report& report)
 {
-    TimelineParameters parameters(snapper->getConfig());
-    TimelineCleaner cleaner(snapper, verbose, parameters);
+    TimelineParameters parameters(get_config());
+    TimelineCleaner cleaner(get_cleanable(), verbose, parameters);
     cleaner.cleanup(report);
 }
 
 
 void
-do_cleanup_timeline(ProxySnapper* snapper, bool verbose, std::function<bool()> condition, Plugins::Report& report)
+CleanupOperation::do_cleanup_timeline(bool verbose, std::function<bool()> condition, Plugins::Report& report)
 {
-    TimelineParameters parameters(snapper->getConfig());
-    TimelineCleaner cleaner(snapper, verbose, parameters);
+    TimelineParameters parameters(get_config());
+    TimelineCleaner cleaner(get_cleanable(), verbose, parameters);
     cleaner.cleanup(condition, report);
 }
 
@@ -836,9 +833,9 @@ class EmptyPrePostCleaner : public Cleaner
 {
 public:
 
-    EmptyPrePostCleaner(ProxySnapper* snapper, bool verbose,
+    EmptyPrePostCleaner(ProxyCleanable& cleanable, bool verbose,
 			const EmptyPrePostParameters& parameters)
-	: Cleaner(snapper, verbose, parameters) {}
+	: Cleaner(cleanable, verbose, parameters) {}
 
 private:
 
@@ -854,7 +851,7 @@ private:
 		ProxySnapshots::iterator it2 = snapshots.findPost(it1);
 		if (it2 != snapshots.end())
 		{
-		    ProxyComparison comparison = snapper->createComparison(*it1, *it2, false);
+		    ProxyComparison comparison = cleanable.create_comparison(*it1, *it2, false);
 		    if (comparison.getFiles().empty())
 		    {
 			ret.push_back(it1);
@@ -870,20 +867,20 @@ private:
 
 
 void
-do_cleanup_empty_pre_post(ProxySnapper* snapper, bool verbose, Plugins::Report& report)
+CleanupOperation::do_cleanup_empty_pre_post(bool verbose, Plugins::Report& report)
 {
-    EmptyPrePostParameters parameters(snapper->getConfig());
-    EmptyPrePostCleaner cleaner(snapper, verbose, parameters);
+    EmptyPrePostParameters parameters(get_config());
+    EmptyPrePostCleaner cleaner(get_cleanable(), verbose, parameters);
     cleaner.cleanup(report);
 }
 
 
 void
-do_cleanup_empty_pre_post(ProxySnapper* snapper, bool verbose, std::function<bool()> condition,
+CleanupOperation::do_cleanup_empty_pre_post(bool verbose, std::function<bool()> condition,
 			  Plugins::Report& report)
 {
-    EmptyPrePostParameters parameters(snapper->getConfig());
-    EmptyPrePostCleaner cleaner(snapper, verbose, parameters);
+    EmptyPrePostParameters parameters(get_config());
+    EmptyPrePostCleaner cleaner(get_cleanable(), verbose, parameters);
     cleaner.cleanup(condition, report);
 }
 
