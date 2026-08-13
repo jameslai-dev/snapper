@@ -55,7 +55,7 @@ struct Parameters
     MinFreeLimit free_limit = 0.2;
 
 
-    void read(const char* name, time_t& value)
+    void read(const char* name, time_t& value) const
     {
 	const map<string, string>& raw = config.getAllValues();
 	map<string, string>::const_iterator pos = raw.find(name);
@@ -65,7 +65,7 @@ struct Parameters
 
 
     template<typename Type>
-    void read(const char* name, Type& value)
+    void read(const char* name, Type& value) const
     {
 	const map<string, string>& raw = config.getAllValues();
 	map<string, string>::const_iterator pos = raw.find(name);
